@@ -6,7 +6,7 @@
 create time：2017年4月21日
 '''
 
-import re
+import re, codecs
 try:
     import HTMLParser as H
 except Exception:
@@ -67,7 +67,7 @@ def main(cont):
     return cont
   
 if __name__ == '__main__':  
-    with open('index.html','r') as fp:
+    with codecs.open('index.html','r', "utf-8") as fp:
         cont=fp.read()
-    with open('index.txt','w') as fp:
+    with codecs.open('index.txt','w', "utf-8") as fp:
         cont=fp.write(main(cont))

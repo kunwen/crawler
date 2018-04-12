@@ -109,7 +109,7 @@ def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
             finally:
                 if not ftype:
                     ftype = ''.join(f.split("://")[1:]).split("/")[0]
-                logger.error('%s域名:%s' % (lik[1], ftype))
+                print ('%s - %s域名:%s' % (time.ctime(), lik[1], ftype))
                 # pool.apply_async(craw_run, (startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist))
                 args=[startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist]
                 pool_args.append( (args, None))

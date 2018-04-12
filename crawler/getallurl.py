@@ -64,7 +64,7 @@ class SiteUrl(object):
                 except:
                     pass
                 return res
-            requests.adapters.DEFAULT_RETRIES = 10  
+            requests.adapters.DEFAULT_RETRIES = 10
             html=requests.get(websiteurl,headers={'Referer': websiteurl}).text
         except Exception as err:
             logger.error( websiteurl)
@@ -131,6 +131,8 @@ class SiteUrl(object):
                 #    logger.error("连接失败:原因 %s" % e.reason)
                 #logger.error("网址%s" % links)
                 linksobj = requests.get(links,headers={'Referer': links})
+                #if platform.python_version()[0] == '3':
+                #    linksobj = linksobj.encode(chardet.detect(linksobj).get('encoding'))
                 linkcode = linksobj.status_code
                 # 创建text文件
                 m = hashlib.md5()
@@ -150,7 +152,11 @@ class SiteUrl(object):
                     txtfile = txtfile.encode('utf-8')
                 except Exception:
                     txtfile = content.main(txtfile)
-                    txtfile = txtfile.encode(chardet.detect(txtfile).get('encoding'))
+                    if not isinstance(txtfile, bytes):
+                        try:
+                            txtfile = txtfile.encode(chardet.detect(txtfile).get('encoding'))
+                        except Exception as err:
+                            pass
                     tmpstr = txtfile.replace('\n', '')
                 if response:
                     response.close()
