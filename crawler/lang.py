@@ -25,7 +25,17 @@ class LangagesofFamily(object):
         except Exception:
             pass
         lineTuple = langid.classify(inputFile)                     #调用langid来对该行进行语言检测
-        if lineTuple[0] in lik[0]:
+        if lineTuple[0] in lik[0] or lineTuple[0] in self.countrylist:   #如果该行语言大部分为中文  
+            if  lineTuple[0] not in lik[0]:
+                countr = lik[1]
+                outurl = outputFile.split('/')
+                outurl[-3] = countr
+                outurlstr = '/'.join(outurl[:-3])
+                sitesize = PathSize().GetPathSize(outurlstr) # M
+                if float(sitesize) >= float(ssize):
+                    return True
+
+                outurlFile = '/'.join(outurl)
             p = re.compile(r'[\n]+')
             with codecs.open(outputFile, 'w', "utf-8") as fout:          #以写的方式打开输出文件
                 try:
@@ -34,8 +44,8 @@ class LangagesofFamily(object):
                     fout.writelines(p.sub('\n', fin))
             return True
         else:
+            logger.error('文件内容的语言%s和想获取的文章的语言%s不符合！' % (lineTuple[0], ','.join(lik[0])))
             return False
-
 if __name__ == '__main__':                                            #相当于main函数  
     langages = LangagesofFamily()
     print (langages.lanclass)

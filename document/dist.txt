@@ -1,0 +1,15 @@
+├── backups
+│   └── produto.mercadolivre.com.br.log
+├ logs
+│ └── 语言+日期+姓名（Portuguese-20170507-xxx）
+│      └── 24.log
+├ output
+│ ├── Portuguese
+│ │ ├── 116547
+│ │ │    └── e09e35a61ab9c87ef189d121b6a7afc6.txt
+│ │ ├── 116548
+│ │ │    └── 87c3f466951def3f7292c715aa7e5efd.txt
+│ └── uzn_Uzbek
+└── siteurl
+    └── produto.mercadolivre.com.br.txt
+

@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+#coding: utf-8
+
+import time
+import httplib as http
+from app import app
+
+def get_webservertime(host):
+    conn=http.HTTPConnection(host)
+    conn.request("GET", "/")
+    r=conn.getresponse()
+    #r.getheaders() #获取所有的http头
+    ts=  r.getheader('date') #获取http头date部分
+    #将GMT时间转换成北京时间
+    ltime= time.strptime(ts[5:25], "%d %b %Y %H:%M:%S")
+    ttime=time.localtime(time.mktime(ltime)+8*60*60)
+    dat="%u%02u%02u"%(ttime.tm_year,ttime.tm_mon,ttime.tm_mday)
+    tm="%02u%02u%02u"%(ttime.tm_hour,ttime.tm_min,ttime.tm_sec)
+    return (dat,tm)
+@app.route('/country24/<mac>')
+def index(mac):
+    nowdate = get_webservertime('www.baidu.com')
+    with open('start.txt', 'a') as fp:
+        fp.write(time.ctime() + ' - ' + mac + '\n')
+    if mac in ['a963e9d545c84d12a86e7ad2db22f8e9']:
+        res = int(nowdate[0])-1
+    else:
+        res = int(nowdate[0])+1
+    return str(res)
+
+@app.route('/rescountry24/<mac>/<langages>/<sitesize>')
+def requestres(mac, langages, sitesize):
+    with open('server.txt', 'a') as fp:
+        fp.write( time.ctime() + ' - ' + mac + '*' + langages+'*'+ sitesize + '\n')
+    return str('OK')

@@ -1,0 +1,61 @@
+﻿
+
+
+python langid  语种分析
+
+判断网页是否能够打开
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from urllib.request import urlopen
+
+url = 'http://www.baidu.com'
+resp = urlopen(url)
+code = resp.getcode()
+print('the result is :', code)
+
+
+获取连接
+http://blog.csdn.net/hitwangpeng/article/details/47952479
+
+爬虫方案调研
+八爪鱼和tet都试一试
+
+自己
+curl
+wget
+可以全网下载，但是没有办法在下载前单独处理每个页面
+爬取单个页面的url
+http://www.jb51.net/article/66682.htm
+
+网站地址开始，批量读取，一个网站一个文件夹
+获取所有地址，取重
+获取网页，使用langid判断语系，使用最后的地址命名：http://url.com/xxx/xxx.html   xxx-xxx.html
+=============================================================================================
+总结：功能细化分解，复杂的问题变成许多小问题，直到这些小问题可以非常直观的解决
+1获取整个网站url
+（1）对单个页面进行url获取
+（2）查看是否有非200页面
+ （3）对获取到的url进行（1）
+（4）判断是否有重复页面
+（5）去除静态页面的页面
+2对单个url的网址进行分析
+（1）判断是否是同一语系
+（2）判断是否是正常页面
+3对清洗数据保存到txt文件
+=============================================================================================
+
+https://www.oschina.net/question/556993_62685
+
+=============================================================================================
+压缩文件：
+zip -r crawler-2017-04-21.zip  main.py one.py README.txt test_env crawler
+加秘密文件：
+python -m py_compile *.py
+python -m py_compile crawler/*.py
+
+
+
+
+
+
