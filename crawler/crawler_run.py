@@ -20,6 +20,7 @@ from crawler.getallurl import  SiteUrl
 from crawler.lang import LangagesofFamily
 from crawler.logger import logger
 from crawler.check import *
+from crawler.actionSQL import *
 
 sld = SLD()
 # lock=multiprocessing.Lock()#一个锁
@@ -118,13 +119,22 @@ def craw_run(startUrlList, ftype, lik, langages, mainUrl, deep, ssize, conflist)
     sitesize = PathSize().GetPathSize(mainUrl) # M
     if float(sitesize) >= float(ssize):
         return False
+
+    table = 'WEBSITES'
+    sqlA = SQLite3Action('crawler/URI.DB')
+    if not sqlA.select(table,contions=' NAME=\"{0}\" and langageclass=\"{1}\" '.format(startUrlList[0], lik[1])):
+        kargs = {'NAME':startUrlList[0],'langageclass': lik[1]}
+        sqlA.insert(table, kargs)
+    dataSQL = sqlA.select(table,contions=' NAME=\"{0}\" and langageclass=\"{1}\" '.format(startUrlList[0], lik[1]))
+
     tfile = mainUrl + str(conflist[0]) + '/'
     # 创建text文件目录
     if not os.path.exists(tfile):
         os.makedirs(tfile)
-    site_url = SiteUrl(int(deep), xfile, tfile, lik, mainUrl, ssize)
+    site_url = SiteUrl(int(deep), xfile, tfile, lik, mainUrl, ssize, sqlA, dataSQL[0][0])
     site_url.allsiteU += startUrlList
     site_url.allsiteurl(startUrlList, ftype, urldir)
+    sqlA.closesql()
     if not os.listdir(tfile):
         shutil.rmtree(tfile)
         return False

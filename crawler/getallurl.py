@@ -26,12 +26,14 @@ from crawler.lang import LangagesofFamily
 import crawler.content as content
 from crawler.getdomain import SLD
 from crawler.check import *
+from crawler.actionSQL import *
 
 import sys   
 sys.setrecursionlimit(1000000)
 
 class SiteUrl(object):
-    def __init__(self, DEEP=1, xpath='backups/', tpath='./', langage=(['zh'], 'Chinese_Simp'), langurl = 'output/Chinese_Simp', ssize = 1):
+    def __init__(self, DEEP=1, xpath='backups/', tpath='./', langage=(['zh'], 'Chinese_Simp'), 
+        langurl = 'output/Chinese_Simp', ssize = 1, sqlA = SQLite3Action('crawler/URI.DB'), siteid = 1):
         self.t=time.time()
         self.websiteurls={}
         self.DEEP = DEEP
@@ -44,6 +46,8 @@ class SiteUrl(object):
         self.codelist = [(['pt'],'Breton'), (['qu'],'Afrikaans')]
         self.codekeys = ['pt', 'qu']
         self.codesuf = ['br', 'fa']
+        self.sqlA = sqlA
+        self.siteid = siteid
 
     def scanpage(self, param):
         import sys
@@ -96,6 +100,9 @@ class SiteUrl(object):
             elif ftype in linkshref:
                 Upageurls[linkshref]=0
         self.allsiteU = list(set(Upageurls.keys()))
+        # outK 文件为空；outE 文件语言匹配错误； outL 链接不上
+        outK, outE, outL = 0, 0, 0
+        table = 'URLS'
         for links in self.allsiteU:
           try:
             txtfile = ''
@@ -110,6 +117,13 @@ class SiteUrl(object):
                 except:
                     pass
                 break
+            
+            if self.sqlA.select(table,contions='NAME=\"{0}\" and siteid=\"{1}\"'.format(links, self.siteid)):
+                continue
+            else:
+                kargs = {'NAME':'Paul','siteid': self.siteid}
+                self.sqlA.insert(table, kargs)
+
             # linksobj = requests.get(links,headers={'Referer': links})
             # linkcode = linksobj.status_code
             # linkcode = linksobj.code
@@ -150,6 +164,8 @@ class SiteUrl(object):
                     Upageurls[links]=200
                     res.append(links)
                     txtfile = linksobj.text
+                else:
+                	txtfile = ''
             finally:
                 if isinstance(txtfile, bytes):
                     txtfile = txtfile.decode(chardet.detect(txtfile).get('encoding'), "ignore")
@@ -161,20 +177,25 @@ class SiteUrl(object):
                 if tmpstr:
                     lanres = langages.translate(txtfile, self.tpath +  m.hexdigest() + ".txt", self.langage, self.ssize)
                     if not lanres:
+                        outE +=1
                         logger.error('语言%s的类型不符：%s' % (self.langage[1], links))
                     else:
                         with open(self.xpath + ftype +'.log', 'a') as fp:
                             fp.write('%s文件名称:%s.txt文件路径:%s\n' % (time.ctime(), m.hexdigest(), links))
                 else:
+                    outK +=1
                     logger.warning("url网页清洗后为空：%s" % links)
             # t1=time.time()
             # print t1-t2
           except Exception as err:
+            outL +=1
             logger.error("网址%s连接失败原因: %s" % (str(links),str(err)))
           n+=1
+          if (outK + outE + outL) > 5:
+            break
         logger.info("total is "+repr(n)+" links")
         logger.info(str(time.time()-t))
-        return res
+        return res 
     
     def allChildUrl(self, argsList, ftype, allurldir):
         urlList = []
