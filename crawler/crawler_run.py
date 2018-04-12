@@ -6,7 +6,7 @@
 create time：2017年4月21日
 '''
 
-import time, logging
+import time, logging, codecs
 import os, glob, requests, shutil
 try:   
     import httplib as http
@@ -50,14 +50,14 @@ def main():
     if not threadnum:threadnum=3
     if not ssize:ssize=1
     # 期限设置
-    nowdate = get_webservertime('www.baidu.com')
     try:
+        nowdate = get_webservertime('www.baidu.com')
         req = requests.get('http://xn--cnq423f4sm.com:443/country24/'+ get_mac_address(), timeout=5)
+        if req and (not nowdate or int(nowdate[0]) >= eval(req.text)):
+            return logger.error('已过有效期！')
     except:
-        req = ''
-    if req and (not nowdate or int(nowdate[0]) >= eval(req.text)):
-        return logger.error('已过有效期！')
-
+        pass
+    
     langages = LangagesofFamily()
     # 网站地址全集
     if not os.path.exists(urldir):
@@ -74,7 +74,7 @@ def main():
             logger.info( '生成的文件将要输出到这个目录下：%s ！' % mainUrl)
             lik = i[0]
      
-            with open(confpath+i[1]+'.conf','r') as fp:
+            with codecs.open(confpath+i[1]+'.conf','r', "utf-8") as fp:
                 outf = fp.readlines()
             allOneLangageSite(outf, i, mainUrl, langages, deep, threadnum, ssize)
 

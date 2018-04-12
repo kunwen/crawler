@@ -45,8 +45,9 @@ class SiteUrl(object):
         self.codekeys = ['pt', 'qu']
         self.codesuf = ['br', 'fa']
 
-    def scanpage(self, url, ftype):
+    def scanpage(self, param):
         import sys
+        url, ftype = param
         try:
             reload(sys)
             sys.setdefaultencoding('utf8')
@@ -70,7 +71,7 @@ class SiteUrl(object):
                     pass
                 return res
             requests.adapters.DEFAULT_RETRIES = 10
-            html=requests.get(websiteurl,headers={'Referer': websiteurl}).text
+            html=requests.get(websiteurl,headers={'Referer': websiteurl}, timeout=20).text
         except Exception as err:
             logger.error( websiteurl)
             logger.error(err)
@@ -116,7 +117,7 @@ class SiteUrl(object):
             try:
                 req = urllib2.Request(links,headers={'Referer': links})
                 req.add_header('User-Agent','Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36')
-                response = urllib2.urlopen(req)
+                response = urllib2.urlopen(req, timeout=20)
             # t2=time.time()
                 Upageurls[links]=200
             #if 200 == linkcode:
@@ -150,19 +151,11 @@ class SiteUrl(object):
                     res.append(links)
                     txtfile = linksobj.text
             finally:
-                try:
-                    txtfile = txtfile.decode('utf-8')
-                    txtfile = content.main(txtfile)
-                    tmpstr = txtfile.replace('\n', '')
-                    txtfile = txtfile.encode('utf-8')
-                except Exception:
-                    txtfile = content.main(txtfile)
-                    if not isinstance(txtfile, bytes):
-                        try:
-                            txtfile = txtfile.encode(chardet.detect(txtfile).get('encoding'))
-                        except Exception as err:
-                            pass
-                    tmpstr = txtfile.replace('\n', '')
+                if isinstance(txtfile, bytes):
+                    txtfile = txtfile.decode(chardet.detect(txtfile).get('encoding'), "ignore")
+                txtfile = content.main(txtfile)
+                tmpstr = txtfile.replace('\n', '')
+                txtfile = txtfile.encode('utf-8', "ignore")
                 if response:
                     response.close()
                 if tmpstr:
@@ -197,12 +190,23 @@ class SiteUrl(object):
                 pass
             
         # 提高IO并发量
-        jobs = [gevent.spawn(self.scanpage, args, ftype) for args in argsList]
-        gevent.joinall(jobs)
-        for args in jobs:
-            # argsres = self.scanpage(args, ftype)
-            if args:
-                #urlList =argsres
+        # jobs = [gevent.spawn(self.scanpage, args, ftype) for args in argsList]
+        # gevent.joinall(jobs)
+        # 使用协程池 
+        #dataList = []
+        pool=gevent.pool.Pool(500)
+        #for args in argsList:
+        #    dataList.append(pool.spawn(self.scanpage, args, ftype))
+        #argsList = pool.join()
+        #print (argsList)
+        argsList = pool.imap(self.scanpage, [ (args, ftype) for args in argsList])
+        
+        urlList = []
+        for args in argsList:
+        #    argsres = self.scanpage(args, ftype)
+        #    if argsres:
+        #    if args
+        #        urlList += argsres
                 urlList +=args
         
         if ftype:
