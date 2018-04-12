@@ -19,7 +19,7 @@ class LangagesofFamily(object):
         self.lanclass = lanclass 
         self.countrylist = ','.join([','.join(i[1]) for i in self.lanclass]).split(',')
   
-    def translate(self, inputFile, outputFile, lik, ssize, siteself):
+    def translate(self, inputFile, outputFile, lik, ssize):
         try:
             fin = inputFile.decode('utf-8')
         except Exception:
@@ -37,11 +37,11 @@ class LangagesofFamily(object):
 
                 outurlFile = '/'.join(outurl)
             p = re.compile(r'[\n]+')
-            insert_sql = "insert into t"+str(siteself.table)+" (site,content) values (?,?)" 
-            try:
-                siteself.cur.execute(insert_sql,(outputFile.split('/')[-1],p.sub('\n', inputFile)))
-            except Exception:
-                siteself.cur.execute(insert_sql,(outputFile.split('/')[-1],p.sub('\n', fin)))
+            with codecs.open(outputFile, 'w', "utf-8") as fout:          #以写的方式打开输出文件
+                try:
+                    fout.writelines(p.sub('\n', inputFile))
+                except Exception:
+                    fout.writelines(p.sub('\n', fin))
             return True
         else:
             logger.error('文件内容的语言%s和想获取的文章的语言%s不符合！' % (lineTuple[0], ','.join(lik[0])))

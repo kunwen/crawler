@@ -13,16 +13,13 @@ try:
 except Exception:
     import http.client as http
 from os.path import join, getsize  
-import multiprocessing, threadpool
-from tornado import ioloop
+import multiprocessing, threadpool 
 
 from crawler.getdomain import SLD
 from crawler.getallurl import  SiteUrl
 from crawler.lang import LangagesofFamily
 from crawler.logger import logger
 from crawler.check import *
-
-import sqlite3
 
 sld = SLD()
 # lock=multiprocessing.Lock()#一个锁
@@ -46,8 +43,12 @@ def main():
     global mainUrl
 
     allfile = glob.glob(confpath + '*.conf')
-    ssize = input("* 请输入每种语言下载量 (默认1 单位:M)>>>")   
-    deep, threadnum, ssize=6, 1, 1
+    ssize = input("* 请输入每种语言下载量 (默认1 单位:M)>>>")  
+    deep = input("* 请输入每个网站最大爬取深度 默认3 >>>")  
+    threadnum = input("* 请输入每门语言同一时间爬取的网站个数（线程数） 默认3(谨慎修改，可直接按回车)>")  
+    if not deep:deep=3
+    if not threadnum:threadnum=3
+    if not ssize:ssize=1
     # 期限设置
     try:
         nowdate = get_webservertime('www.baidu.com')
@@ -65,46 +66,26 @@ def main():
     if not os.path.exists(xfile):
        os.makedirs(xfile)
 
-    checkurl = urldir + "siteurl.db"
-    concheck = sqlite3.connect(checkurl)
-    curcheck = concheck.cursor() 
-
     for i in langages.lanclass:
        if os.path.exists(confpath+i[1]+'.conf'):
             mainUrl = 'output/' + i[1] + '/'
-            #if not os.path.exists(mainUrl):
-            #    os.makedirs(mainUrl)
+            if not os.path.exists(mainUrl):
+                os.makedirs(mainUrl)
             logger.info( '生成的文件将要输出到这个目录下：%s ！' % mainUrl)
             lik = i[0]
      
             with codecs.open(confpath+i[1]+'.conf','r', "utf-8") as fp:
                 outf = fp.readlines()
-            crt_tb_sql = "create table if not exists "+ i[1] + """(
-                              id integer primary key autoincrement unique not null,
-                              site varchar(100),
-                              url varchar(100),
-                              state integer default 0
-                            );
-                            """
-            curcheck.execute(crt_tb_sql)
-            #连接数据库
-            con = sqlite3.connect('output/' + i[1]+'.db')
-            cur = con.cursor()       
-            concheck.commit()   
-            allOneLangageSite(outf, i, mainUrl, langages, deep, threadnum, ssize, curcheck, concheck, cur, con)
-            con.commit()
-            con.close()
-            cur.close()
-    concheck.commit()
-    concheck.close()
-    curcheck.close()
+            allOneLangageSite(outf, i, mainUrl, langages, deep, threadnum, ssize)
 
-def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize, curcheck, concheck, cur, con):
+def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
     n, sn,  = 0, 1
+    # pool=multiprocessing.Pool(processes=5) #限制并行进程数为5
+    # 多线程
     pool_args = []
     pool = threadpool.ThreadPool(int(threadnum)) 
     print ('starting at:%s' % time.strftime( '%Y-%m-%d %H:%M:%S' , time.localtime() ))
-    io_loop = ioloop.IOLoop.current()
+    
     for j in outf:
         conflist = j.strip().replace('\n', '').replace('\r', '').split('=')
         n += 1
@@ -122,27 +103,18 @@ def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize, curc
                 if not ftype:
                     ftype = ''.join(f.split("://")[1:]).split("/")[0]
                 print ('%s - %s域名:%s' % (time.ctime(), lik[1], ftype))
-
-                # 一个网站一张表
-                crt_tb_sql = "create table if not exists t"+ conflist[0] +"""(
-                              id integer primary key autoincrement unique not null,
-                              site varchar(200),
-                              content text
-                            );
-                            """
-                cur.execute(crt_tb_sql)
-                #插入记录
-                insert_sql = "insert into "+lik[1]+" (site,url) values (?,?)" 
-                curcheck.execute(insert_sql,( conflist[0],conflist[2]))
-                concheck.commit()
-                craw_run(startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist, io_loop, curcheck, concheck, cur, con)
-                update_sql = "UPDATE  "+lik[1]+" SET state=1 where id='%s'" % str(curcheck.lastrowid)
-                curcheck.execute(update_sql)
-                concheck.commit()
+                # pool.apply_async(craw_run, (startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist))
+                args=[startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist]
+                pool_args.append( (args, None))
         else:
             logger.error('配置文件%s的第%s行有问题！' % (lik[1]+'.conf', n))
+    # pool.close()
+    # pool.join()
+    reqs = threadpool.makeRequests(craw_run, pool_args)  
+    [pool.putRequest(req) for req in reqs]  
+    pool.wait() 
 
-def craw_run(startUrlList, ftype, lik, langages, mainUrl, deep, ssize, conflist, io_loop, curcheck, concheck, cur, con):
+def craw_run(startUrlList, ftype, lik, langages, mainUrl, deep, ssize, conflist):
     sitesize = PathSize().GetPathSize(mainUrl) # M
     if float(sitesize) >= float(ssize):
         return False
@@ -150,9 +122,9 @@ def craw_run(startUrlList, ftype, lik, langages, mainUrl, deep, ssize, conflist,
     # 创建text文件目录
     if not os.path.exists(tfile):
         os.makedirs(tfile)
-    site_url = SiteUrl(curcheck, concheck, cur, con,int(deep), xfile, tfile, lik, mainUrl, ssize)
+    site_url = SiteUrl(int(deep), xfile, tfile, lik, mainUrl, ssize)
     site_url.allsiteU += startUrlList
-    site_url.allsiteurl(startUrlList, ftype, io_loop, urldir)
+    site_url.allsiteurl(startUrlList, ftype, urldir)
     if not os.listdir(tfile):
         shutil.rmtree(tfile)
         return False
