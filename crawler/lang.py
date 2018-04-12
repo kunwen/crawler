@@ -20,7 +20,10 @@ class LangagesofFamily(object):
         self.countrylist = ','.join([','.join(i[1]) for i in self.lanclass]).split(',')
   
     def translate(self, inputFile, outputFile, lik, ssize):
-        fin = inputFile.decode('utf-8')
+        try:
+            fin = inputFile.decode('utf-8')
+        except Exception:
+            pass
         lineTuple = langid.classify(inputFile)                     #调用langid来对该行进行语言检测
         if lineTuple[0] in lik[0] or lineTuple[0] in self.countrylist:   #如果该行语言大部分为中文  
             if  lineTuple[0] not in lik[0]:

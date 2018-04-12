@@ -10,12 +10,16 @@ import os, hashlib, platform
 from os.path import join, getsize  
 from  subprocess import *
 
+# 获取本机mac 
 def get_mac_address(): 
     import hashlib
     import uuid
     m = hashlib.md5()
-    mac=uuid.UUID(int = uuid.getnode()).hex[-12:] 
-    m.update(":".join([mac[e:e+2] for e in range(0,11,2)]))
+    mac=uuid.UUID(int = uuid.getnode()).hex[-12:]
+    mac = ":".join([mac[e:e+2] for e in range(0,11,2)])
+    if platform.python_version()[0] == '3':
+        mac = mac.encode('utf-8')
+    m.update(mac)
     return m.hexdigest()
 
 def getpathsize(path):  

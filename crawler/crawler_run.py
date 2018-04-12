@@ -39,14 +39,6 @@ def get_webservertime(host):
     tm="%02u%02u%02u"%(ttime.tm_hour,ttime.tm_min,ttime.tm_sec)
     return (dat,tm)
 
-def get_mac_address(): 
-    import hashlib
-    import uuid
-    m = hashlib.md5()
-    mac=uuid.UUID(int = uuid.getnode()).hex[-12:] 
-    m.update(":".join([mac[e:e+2] for e in range(0,11,2)]))
-    return m.hexdigest()
-
 def main():
     global mainUrl
 
@@ -87,7 +79,7 @@ def main():
             allOneLangageSite(outf, i, mainUrl, langages, deep, threadnum, ssize)
 
 def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
-    n, sn = 1, 1
+    n, sn,  = 0, 1
     # pool=multiprocessing.Pool(processes=5) #限制并行进程数为5
     # 多线程
     pool_args = []
@@ -96,6 +88,7 @@ def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
     
     for j in outf:
         conflist = j.strip().replace('\n', '').replace('\r', '').split('=')
+        n += 1
         if len(conflist)>=3:
             f = conflist[2]
             if not '://' in f:
@@ -113,12 +106,8 @@ def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
                 # pool.apply_async(craw_run, (startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist))
                 args=[startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist]
                 pool_args.append( (args, None))
-                n += 1
-                # if runres:  
-                #     sn +=1
-                #     logger.info(u'语言%s检索到了%s个网站，有效的网站有%s个！' % (lik[1], str(n), str(sn)))
         else:
-            logger.error('配置文件%s的这一行%s有问题！' % (i[1]+'.conf', j))
+            logger.error('配置文件%s的第%s行有问题！' % (lik[1]+'.conf', n))
     # pool.close()
     # pool.join()
     reqs = threadpool.makeRequests(craw_run, pool_args)  

@@ -16,6 +16,11 @@ try:
 except Exception:
     import urllib.request as urllib
     import urllib.request as urllib2
+    
+import gevent
+from gevent import monkey
+monkey.patch_socket()
+
 from crawler.logger import logger, logprint
 from crawler.lang import LangagesofFamily
 import crawler.content as content
@@ -190,11 +195,16 @@ class SiteUrl(object):
                 requests.get('http://xn--cnq423f4sm.com:443/rescountry24/%s/%s/%s' % (get_mac_address(),self.langurl, sitesize), timeout=5)
             except:
                 pass
-            return urlList
-        for args in argsList:
-            argsres = self.scanpage(args, ftype)
-            if argsres:
-                urlList =argsres
+            
+        # 提高IO并发量
+        jobs = [gevent.spawn(self.scanpage, args, ftype) for args in argsList]
+        gevent.joinall(jobs)
+        for args in jobs:
+            # argsres = self.scanpage(args, ftype)
+            if args:
+                #urlList =argsres
+                urlList +=args
+        
         if ftype:
             with open(allurldir + ftype + '.txt', 'w') as fp:
                for i in urlList:
