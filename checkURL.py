@@ -23,7 +23,7 @@ from crawler import *
 from crawler import content, lang
 
 def file_name(langages, i, filename, lik):
-    itmp = i.split('=')
+    itmp = i.strip().replace('\n', '').replace('\r', '').split('=')
     if len(itmp) == 3:
         try: 
             links = itmp[2].replace('\n', '')

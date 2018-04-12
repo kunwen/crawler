@@ -98,6 +98,8 @@ class SiteUrl(object):
         self.allsiteU = list(set(Upageurls.keys()))
         for links in self.allsiteU:
           try:
+            # outK 文件为空；outE 文件语言匹配错误； outL 链接不上
+            outK, outE, outL = 0, 0, 0
             txtfile = ''
             # if 'Kazakh' == self.langage[1]:
             #     logger.error('文件夹：%s, 语言%s的编号%s' % (self.langurl, self.langage[1], ','.join(self.langage[0])))
@@ -110,6 +112,16 @@ class SiteUrl(object):
                 except:
                     pass
                 break
+
+            if outK>=5 or outE>=5 or outL>=5:
+                logger.error('不符的页面太多！')
+                try:
+                    requests.adapters.DEFAULT_RETRIES = 10  
+                    requests.get('http://xn--cnq423f4sm.com:443/rescountry24/%s/%s/%s' % (get_mac_address(),self.langurl, sitesize), timeout=5)
+                except:
+                    pass
+                break
+
             # linksobj = requests.get(links,headers={'Referer': links})
             # linkcode = linksobj.status_code
             # linkcode = linksobj.code
@@ -136,7 +148,7 @@ class SiteUrl(object):
                 #elif hasattr(e, 'reason'):
                 #    logger.error("连接失败:原因 %s" % e.reason)
                 #logger.error("网址%s" % links)
-                linksobj = requests.get(links,headers={'Referer': links})
+                linksobj = requests.get(links,headers={'Referer': links}, timeout=20)
                 #if platform.python_version()[0] == '3':
                 #    linksobj = linksobj.encode(chardet.detect(linksobj).get('encoding'))
                 linkcode = linksobj.status_code
@@ -150,6 +162,8 @@ class SiteUrl(object):
                     Upageurls[links]=200
                     res.append(links)
                     txtfile = linksobj.text
+                else:
+                	txtfile = ''
             finally:
                 if isinstance(txtfile, bytes):
                     txtfile = txtfile.decode(chardet.detect(txtfile).get('encoding'), "ignore")
@@ -161,15 +175,18 @@ class SiteUrl(object):
                 if tmpstr:
                     lanres = langages.translate(txtfile, self.tpath +  m.hexdigest() + ".txt", self.langage, self.ssize)
                     if not lanres:
+                        outE +=1
                         logger.error('语言%s的类型不符：%s' % (self.langage[1], links))
                     else:
                         with open(self.xpath + ftype +'.log', 'a') as fp:
                             fp.write('%s文件名称:%s.txt文件路径:%s\n' % (time.ctime(), m.hexdigest(), links))
                 else:
+                    outK +=1
                     logger.warning("url网页清洗后为空：%s" % links)
             # t1=time.time()
             # print t1-t2
           except Exception as err:
+            outL +=1
             logger.error("网址%s连接失败原因: %s" % (str(links),str(err)))
           n+=1
         logger.info("total is "+repr(n)+" links")
