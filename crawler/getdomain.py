@@ -3,10 +3,15 @@
 
 
 import re
-import urlparse
+try:
+    import urlparse
+    from logger import logger
+except Exception:
+    import urllib.parse as urlparse
+    from crawler.logger import logger
 import traceback
 
-from logger import logger
+
 
 #这是国家级域名后缀字符串，如果有新增加，请按照“后缀-说明"的格式添加
 country_domain_names = """ad-Andorra安道尔
@@ -300,7 +305,7 @@ class SLD(object):
             else:
                 host = url
         else:
-            logger.warning( "[%s] not a url" %url)
+            logger.info( "[%s] not a url" %url)
             pass
         return host
            
@@ -345,8 +350,8 @@ class SLD(object):
                     pass
             return second_level_domain
         
-        except Exception, err:
-            logger.warning('获取一级域名时报错的原因：%s' % err)
+        except Exception as err:
+            logger.info('获取一级域名时报错的原因：%s' % err)
             pass
             # traceback.print_exc()
    
@@ -355,4 +360,4 @@ class SLD(object):
 if __name__ == '__main__':
     a = SLD()
     for u in ["https://www.sina.com.cn:80/news/1/index.html", "https://www.jd.com.cn:80", "https://www.sina.com/","www.baidu.com.cn/news/1/index.html", "news.aodun.com.cn/1/a.html", "aodun.com", "d.adf.jf.cn", "adf.adfkj","a.news.aodun.com.cn:80/1/a.html", "med-music.com.ua"]:
-        print a.get_second_level_domain(u)
+        print (a.get_second_level_domain(u))

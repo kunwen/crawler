@@ -8,15 +8,18 @@ create time：2017年4月21日
 
 import time, logging
 import os, glob, requests, shutil
-import httplib as http
+try:   
+    import httplib as http
+except Exception:
+    import http.client as http
 from os.path import join, getsize  
 import multiprocessing, threadpool 
 
-from getdomain import SLD
-from getallurl import  SiteUrl
-from lang import LangagesofFamily
-from logger import logger
-from check import *
+from crawler.getdomain import SLD
+from crawler.getallurl import  SiteUrl
+from crawler.lang import LangagesofFamily
+from crawler.logger import logger
+from crawler.check import *
 
 sld = SLD()
 # lock=multiprocessing.Lock()#一个锁
@@ -48,9 +51,9 @@ def main():
     global mainUrl
 
     allfile = glob.glob(confpath + '*.conf')
-    ssize = raw_input("* 请输入每种语言下载量 (默认1 单位:M)>>>")  
-    deep = raw_input("* 请输入每个网站最大爬取深度 默认3 >>>")  
-    threadnum = raw_input("* 请输入每门语言同一时间爬取的网站个数（线程数） 默认3(谨慎修改，可直接按回车)>")  
+    ssize = input("* 请输入每种语言下载量 (默认1 单位:M)>>>")  
+    deep = input("* 请输入每个网站最大爬取深度 默认3 >>>")  
+    threadnum = input("* 请输入每门语言同一时间爬取的网站个数（线程数） 默认3(谨慎修改，可直接按回车)>")  
     if not deep:deep=3
     if not threadnum:threadnum=3
     if not ssize:ssize=1
@@ -89,30 +92,33 @@ def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
     # 多线程
     pool_args = []
     pool = threadpool.ThreadPool(int(threadnum)) 
-    print 'starting at:',time.strftime( '%Y-%m-%d %H:%M:%S' , time.localtime() )
+    print ('starting at:%s' % time.strftime( '%Y-%m-%d %H:%M:%S' , time.localtime() ))
     
     for j in outf:
         conflist = j.strip().replace('\n', '').replace('\r', '').split('=')
-        f = conflist[2]
-        if not '://' in f:
-            f = 'http://' + f
-        startUrlList = [f]
-        try:
-            ftype = sld.get_second_level_domain(j[2])
-        except Exception as e:
-            logger.error("url获取域名问题：%s !" % e)
-            ftype = ''.join(f.split("://")[1:]).split("/")[0]
-        finally:
-            if not ftype:
+        if len(conflist)>=3:
+            f = conflist[2]
+            if not '://' in f:
+                f = 'http://' + f
+            startUrlList = [f]
+            try:
+                ftype = sld.get_second_level_domain(j[2])
+            except Exception as e:
+                logger.error("url获取域名问题：%s !" % e)
                 ftype = ''.join(f.split("://")[1:]).split("/")[0]
-            logger.error('%s域名:%s' % (lik[1], ftype))
-            # pool.apply_async(craw_run, (startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist))
-            args=[startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist]
-            pool_args.append( (args, None))
-            n += 1
-            # if runres:  
-            #     sn +=1
-            #     logger.info(u'语言%s检索到了%s个网站，有效的网站有%s个！' % (lik[1], str(n), str(sn)))
+            finally:
+                if not ftype:
+                    ftype = ''.join(f.split("://")[1:]).split("/")[0]
+                logger.error('%s域名:%s' % (lik[1], ftype))
+                # pool.apply_async(craw_run, (startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist))
+                args=[startUrlList,ftype, lik,langages, mainUrl, deep, ssize, conflist]
+                pool_args.append( (args, None))
+                n += 1
+                # if runres:  
+                #     sn +=1
+                #     logger.info(u'语言%s检索到了%s个网站，有效的网站有%s个！' % (lik[1], str(n), str(sn)))
+        else:
+            logger.error('配置文件%s的这一行%s有问题！' % (i[1]+'.conf', j))
     # pool.close()
     # pool.join()
     reqs = threadpool.makeRequests(craw_run, pool_args)  
@@ -120,9 +126,6 @@ def allOneLangageSite(outf, lik, mainUrl, langages, deep, threadnum, ssize):
     pool.wait() 
 
 def craw_run(startUrlList, ftype, lik, langages, mainUrl, deep, ssize, conflist):
-    import sys
-    reload(sys)
-    sys.setdefaultencoding('utf8')
     sitesize = PathSize().GetPathSize(mainUrl) # M
     if float(sitesize) >= float(ssize):
         return False

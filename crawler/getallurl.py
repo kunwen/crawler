@@ -6,48 +6,27 @@
 create time：2017年4月21日
 '''
 
-import os, hashlib, platform
+import os, hashlib, platform, chardet
 from os.path import join, getsize  
 from bs4 import BeautifulSoup
 from  subprocess import *
-import time,re,psutil,urllib, urllib2, requests
-from logger import logger, logprint
-from lang import LangagesofFamily
-import content
-from getdomain import SLD
-from check import *
+import time,re,psutil, requests
+try:
+    import urllib,urllib2
+except Exception:
+    import urllib.request as urllib
+    import urllib.request as urllib2
+from crawler.logger import logger, logprint
+from crawler.lang import LangagesofFamily
+import crawler.content as content
+from crawler.getdomain import SLD
+from crawler.check import *
 
-# def get_mac_address(): 
-#     import hashlib
-#     import uuid
-#     m = hashlib.md5()
-#     mac=uuid.UUID(int = uuid.getnode()).hex[-12:] 
-#     m.update(":".join([mac[e:e+2] for e in range(0,11,2)]))
-#     return m.hexdigest()
-# 
-# def getpathsize(path):  
-#    size = 0L  
-#    for root, dirs, files in os.walk(path):  
-#       size += sum([getsize(join(root, name)) for name in files])  
-#    return size  
-# 
-# class PathSize(object):
-#     def __init__(self):
-#         pass
-# 
-#     def GetPathSize(self, strPath):  
-#         nTotalSize = 0
-#         sysstr = platform.system()
-#         if(sysstr =="Windows"):
-#           nTotalSize = getpathsize(strPath)
-#         elif(sysstr == "Linux"):
-#           nTotalSize = check_output(["du", "-sb" , strPath]).strip().split('\t')[0]
-#         else:
-#           nTotalSize = check_output(["du", "-sb" , strPath]).strip().split('\t')[0]
-#         return float(nTotalSize)/1024/1024
+import sys   
+sys.setrecursionlimit(1000000)
 
 class SiteUrl(object):
-    def __init__(self, DEEP=1, xpath='backups/', tpath='.', langage=(['zh'], 'Chinese_Simp'), langurl = 'output/Chinese_Simp', ssize = 1):
+    def __init__(self, DEEP=1, xpath='backups/', tpath='./', langage=(['zh'], 'Chinese_Simp'), langurl = 'output/Chinese_Simp', ssize = 1):
         self.t=time.time()
         self.websiteurls={}
         self.DEEP = DEEP
@@ -63,8 +42,11 @@ class SiteUrl(object):
 
     def scanpage(self, url, ftype):
         import sys
-        reload(sys)
-        sys.setdefaultencoding('utf8')
+        try:
+            reload(sys)
+            sys.setdefaultencoding('utf8')
+        except Exception:
+            pass
         websiteurl=url
         t=time.time()
         n=0
@@ -84,7 +66,7 @@ class SiteUrl(object):
                 return res
             requests.adapters.DEFAULT_RETRIES = 10  
             html=requests.get(websiteurl,headers={'Referer': websiteurl}).text
-        except Exception, err:
+        except Exception as err:
             logger.error( websiteurl)
             logger.error(err)
             return res
@@ -110,6 +92,7 @@ class SiteUrl(object):
         self.allsiteU = list(set(Upageurls.keys()))
         for links in self.allsiteU:
           try:
+            txtfile = ''
             # if 'Kazakh' == self.langage[1]:
             #     logger.error('文件夹：%s, 语言%s的编号%s' % (self.langurl, self.langage[1], ','.join(self.langage[0])))
             sitesize = PathSize().GetPathSize(self.langurl) # M
@@ -127,6 +110,7 @@ class SiteUrl(object):
             response = None
             try:
                 req = urllib2.Request(links,headers={'Referer': links})
+                req.add_header('User-Agent','Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36')
                 response = urllib2.urlopen(req)
             # t2=time.time()
                 Upageurls[links]=200
@@ -134,10 +118,43 @@ class SiteUrl(object):
                 res.append(links)
                 # 创建text文件
                 m = hashlib.md5()
-                m.update(links)
+                try:
+                    m.update(links)
+                except Exception:
+                    m.update(links.encode('utf-8'))
                 # txtfile = content.main(linksobj.text)
-                txtfile = content.main(response.read())
-                if txtfile.replace('\n', ''):
+                txtfile = response.read()
+            except urllib2.URLError as e:
+                #if hasattr(e, 'code'):
+                #    logger.error("连接失败:返回编码%s" % e.code)
+                #elif hasattr(e, 'reason'):
+                #    logger.error("连接失败:原因 %s" % e.reason)
+                #logger.error("网址%s" % links)
+                linksobj = requests.get(links,headers={'Referer': links})
+                linkcode = linksobj.status_code
+                # 创建text文件
+                m = hashlib.md5()
+                try:
+                    m.update(links)
+                except Exception:
+                    m.update(links.encode('utf-8'))
+                if 200 == linkcode:
+                    Upageurls[links]=200
+                    res.append(links)
+                    txtfile = linksobj.text
+            finally:
+                try:
+                    txtfile = txtfile.decode('utf-8')
+                    txtfile = content.main(txtfile)
+                    tmpstr = txtfile.replace('\n', '')
+                    txtfile = txtfile.encode('utf-8')
+                except Exception:
+                    txtfile = content.main(txtfile)
+                    txtfile = txtfile.encode(chardet.detect(txtfile).get('encoding'))
+                    tmpstr = txtfile.replace('\n', '')
+                if response:
+                    response.close()
+                if tmpstr:
                     lanres = langages.translate(txtfile, self.tpath +  m.hexdigest() + ".txt", self.langage, self.ssize)
                     if not lanres:
                         logger.error('语言%s的类型不符：%s' % (self.langage[1], links))
@@ -146,21 +163,10 @@ class SiteUrl(object):
                             fp.write('%s文件名称:%s.txt文件路径:%s\n' % (time.ctime(), m.hexdigest(), links))
                 else:
                     logger.warning("url网页清洗后为空：%s" % links)
-                
-            except urllib2.URLError as e:
-                if hasattr(e, 'code'):
-                    logger.error("连接失败:返回编码%s" % e.code)
-                elif hasattr(e, 'reason'):
-                    logger.error("连接失败:原因 %s" % e.reason)
-                logger.error("网址%s" % links)
-            finally:
-                if response:
-                    response.close()
             # t1=time.time()
             # print t1-t2
-          except Exception, err:
-            print err
-            logger.error("连接失败:原因 %s\n网址%s" % (str(err), links))
+          except Exception as err:
+            logger.error("网址%s连接失败原因: %s" % (str(links),str(err)))
           n+=1
         logger.info("total is "+repr(n)+" links")
         logger.info(str(time.time()-t))
@@ -184,14 +190,14 @@ class SiteUrl(object):
             if argsres:
                 urlList =argsres
         if ftype:
-            with open(allurldir + ftype, 'w') as fp:
+            with open(allurldir + ftype + '.txt', 'w') as fp:
                for i in urlList:
                    fp.writelines(i + '\n')
         if self.DEEP<=0:
             urlList = []
         return urlList
     
-    def allsiteurl(self, singleUrlsL, ftype, allurldir='backups'):
+    def allsiteurl(self, singleUrlsL, ftype, allurldir='siteurl/'):
         if not singleUrlsL or psutil.virtual_memory().percent >=90.0 :
             return True
         else:
@@ -205,7 +211,7 @@ class SiteUrl(object):
 if '__main__' == __name__:
     startUrlList = ['http://www.pricerunner.se']
     ftype = 'pricerunner.se'
-    site_url = SiteUrl( DEEP=2, xpath='backups/', tpath='.', langage=(['sv'] ,'Swedish'), langurl = './', ssize = 5)
+    site_url = SiteUrl( DEEP=2, xpath='backups/', tpath='./', langage=(['sv'] ,'Swedish'), langurl = './', ssize = 5)
     site_url.allsiteU += startUrlList
     site_url.allsiteurl(startUrlList, ftype)
     with open(ftype + '.txt', 'w') as fp:

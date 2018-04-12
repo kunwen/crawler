@@ -19,7 +19,7 @@ def get_mac_address():
     return m.hexdigest()
 
 def getpathsize(path):  
-   size = 0L  
+   size = 0
    for root, dirs, files in os.walk(path):  
       size += sum([getsize(join(root, name)) for name in files])  
    return size  

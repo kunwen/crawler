@@ -7,16 +7,19 @@ create time：2017年4月21日
 '''
 
 import re
-from HTMLParser import HTMLParser  
+try:
+    import HTMLParser as H
+except Exception:
+    import html.parser as H
 from re import sub  
 from sys import stderr  
 from traceback import print_exc  
  
-from logger import logger
+from crawler.logger import logger
   
-class _DeHTMLParser(HTMLParser):  
+class _DeHTMLParser(H.HTMLParser):  
     def __init__(self):  
-        HTMLParser.__init__(self)  
+        H.HTMLParser.__init__(self)  
         self.__text = []  
   
     def handle_data(self, data):  
@@ -39,9 +42,12 @@ class _DeHTMLParser(HTMLParser):
         return ''.join(self.__text).strip()  
   
 def dehtml(text):  
-    import sys
-    reload(sys)
-    sys.setdefaultencoding('utf8')
+    try:
+        import sys
+        reload(sys)
+        sys.setdefaultencoding('utf8')
+    except Exception:
+        pass    
     try:  
         parser = _DeHTMLParser()  
         parser.feed(text)  
@@ -52,7 +58,7 @@ def dehtml(text):
         logger.error(text)
         return text  
   
-def main(cont):  
+def main(cont):
     clear = re.compile('<SCRIPT[\s\S]*?</SCRIPT>',re.I)
     cont = clear.sub("",cont)
     clear = re.compile('<Style[\s\S]*?</Style>',re.I)
